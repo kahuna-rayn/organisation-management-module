@@ -65,7 +65,7 @@ export const OrganisationPanel: React.FC<OrganisationPanelProps> = ({
       <Card>
         <CardContent className="p-6">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className={`grid w-full grid-cols-${enabledTabs.length}`}>
+          <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${enabledTabs.length}, 1fr)` }}>
               {enabledTabs.map(({ id, label, icon: Icon }) => (
                 <TabsTrigger key={id} value={id} className="flex items-center gap-2">
                   <Icon className="h-4 w-4" />
