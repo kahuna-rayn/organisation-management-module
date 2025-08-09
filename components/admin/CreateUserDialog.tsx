@@ -32,7 +32,6 @@ const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Create User
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
