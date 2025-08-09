@@ -1,353 +1,689 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Building, Mail, Phone, MapPin, Globe, Edit3, Save, X } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
-import { useOrganisationContext } from '../context/OrganisationContext';
+import { Separator } from '@/components/ui/separator';
+import { Edit, Save, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import SearchableProfileField from './SearchableProfileField';
 
 interface OrganisationData {
   id?: string;
-  name: string;
-  description: string;
-  email: string;
-  phone: string;
-  address: string;
-  website: string;
-  logo_url: string;
-  created_at?: string;
-  updated_at?: string;
+  organisation_name?: string;
+  organisation_name_short?: string;
+  acra_uen_number?: string;
+  charity_registration_number?: string;
+  address?: string;
+  telephone?: string;
+  annual_turnover?: string;
+  number_of_employees?: number;
+  number_of_executives?: number;
+  appointed_certification_body?: string;
 }
 
-export const OrganisationProfile: React.FC = () => {
-  const { supabaseClient, hasPermission } = useOrganisationContext();
+interface SignatoryRole {
+  id?: string;
+  role_type: string;
+  signatory_name?: string;
+  signatory_title?: string;
+  signatory_email?: string;
+}
+
+interface SignatoryData {
+  name_signatory_cem?: string;
+  title_signatory_cem?: string;
+  email_signatory_cem?: string;
+  name_signatory_hib?: string;
+  title_signatory_hib?: string;
+  email_signatory_hib?: string;
+  name_signatory_dpe?: string;
+  title_signatory_dpe?: string;
+  email_signatory_dpe?: string;
+  dpo_name?: string;
+  dpo_email?: string;
+  iso_name?: string;
+  iso_email?: string;
+  head_it_name?: string;
+  head_it_email?: string;
+  it_manager_name?: string;
+  it_manager_email?: string;
+}
+
+const OrganisationProfile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [orgData, setOrgData] = useState<OrganisationData>({
-    name: '',
-    description: '',
-    email: '',
-    phone: '',
-    address: '',
-    website: '',
-    logo_url: '',
-  });
+  const [organisationData, setOrganisationData] = useState<OrganisationData>({});
+  const [signatoryData, setSignatoryData] = useState<SignatoryData>({});
 
-  const fetchOrganisationProfile = async () => {
+  useEffect(() => {
+    fetchOrganisationData();
+  }, []);
+
+  const fetchOrganisationData = async () => {
     try {
       setLoading(true);
-
-      const { data, error } = await supabaseClient
-        .from('organisation_profile')
+      
+      // Fetch organisation profile data
+      const { data: orgProfile, error: orgError } = await supabase
+        .from('org_profile')
         .select('*')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (orgError) {
+        throw orgError;
       }
 
-      if (data) {
-        setOrgData(data);
+      if (orgProfile) {
+        setOrganisationData(orgProfile);
       }
-    } catch (err: any) {
-      console.error('Error fetching organisation profile:', err);
-      toast({
-        title: "Error",
-        description: "Failed to load organisation profile",
-        variant: "destructive",
-      });
+
+      // Fetch signatory roles data
+      const { data: sigRoles, error: sigError } = await supabase
+        .from('org_sig_roles')
+        .select('*');
+
+      if (sigError) {
+        throw sigError;
+      }
+
+      if (sigRoles && sigRoles.length > 0) {
+        const sigData: SignatoryData = {};
+        
+        sigRoles.forEach((role: any) => {
+          switch (role.role_type) {
+            case 'cem':
+              sigData.name_signatory_cem = role.signatory_name;
+              sigData.title_signatory_cem = role.signatory_title;
+              sigData.email_signatory_cem = role.signatory_email;
+              break;
+            case 'hib':
+              sigData.name_signatory_hib = role.signatory_name;
+              sigData.title_signatory_hib = role.signatory_title;
+              sigData.email_signatory_hib = role.signatory_email;
+              break;
+            case 'dpe':
+              sigData.name_signatory_dpe = role.signatory_name;
+              sigData.title_signatory_dpe = role.signatory_title;
+              sigData.email_signatory_dpe = role.signatory_email;
+              break;
+            case 'dpo':
+              sigData.dpo_name = role.signatory_name;
+              sigData.dpo_email = role.signatory_email;
+              break;
+            case 'iso':
+              sigData.iso_name = role.signatory_name;
+              sigData.iso_email = role.signatory_email;
+              break;
+            case 'head_it':
+              sigData.head_it_name = role.signatory_name;
+              sigData.head_it_email = role.signatory_email;
+              break;
+            case 'it_manager':
+              sigData.it_manager_name = role.signatory_name;
+              sigData.it_manager_email = role.signatory_email;
+              break;
+          }
+        });
+        
+        setSignatoryData(sigData);
+      }
+
+    } catch (error) {
+      console.error('Error fetching organisation data:', error);
+      toast.error('Failed to load organisation data');
     } finally {
       setLoading(false);
     }
   };
 
-  const saveOrganisationProfile = async () => {
+  const handleSave = async () => {
     try {
       setSaving(true);
+      
+      // Save organisation profile data
+      const { error: orgError } = await supabase
+        .from('org_profile')
+        .upsert(organisationData);
 
-      if (orgData.id) {
-        // Update existing profile
-        const { error } = await supabaseClient
-          .from('organisation_profile')
-          .update({
-            name: orgData.name,
-            description: orgData.description,
-            email: orgData.email,
-            phone: orgData.phone,
-            address: orgData.address,
-            website: orgData.website,
-            logo_url: orgData.logo_url,
-          })
-          .eq('id', orgData.id);
+      if (orgError) throw orgError;
 
-        if (error) throw error;
-      } else {
-        // Create new profile
-        const { data, error } = await supabaseClient
-          .from('organisation_profile')
-          .insert([{
-            name: orgData.name,
-            description: orgData.description,
-            email: orgData.email,
-            phone: orgData.phone,
-            address: orgData.address,
-            website: orgData.website,
-            logo_url: orgData.logo_url,
-          }])
-          .select()
-          .single();
+      // Update signatory roles data
+      const updates = [
+        { role_type: 'cem', signatory_name: signatoryData.name_signatory_cem, signatory_title: signatoryData.title_signatory_cem, signatory_email: signatoryData.email_signatory_cem },
+        { role_type: 'hib', signatory_name: signatoryData.name_signatory_hib, signatory_title: signatoryData.title_signatory_hib, signatory_email: signatoryData.email_signatory_hib },
+        { role_type: 'dpe', signatory_name: signatoryData.name_signatory_dpe, signatory_title: signatoryData.title_signatory_dpe, signatory_email: signatoryData.email_signatory_dpe },
+        { role_type: 'dpo', signatory_name: signatoryData.dpo_name, signatory_title: '', signatory_email: signatoryData.dpo_email },
+        { role_type: 'iso', signatory_name: signatoryData.iso_name, signatory_title: '', signatory_email: signatoryData.iso_email },
+        { role_type: 'head_it', signatory_name: signatoryData.head_it_name, signatory_title: '', signatory_email: signatoryData.head_it_email },
+        { role_type: 'it_manager', signatory_name: signatoryData.it_manager_name, signatory_title: '', signatory_email: signatoryData.it_manager_email }
+      ];
 
-        if (error) throw error;
-        setOrgData(data);
+      for (const update of updates) {
+        const { error: sigError } = await supabase
+          .from('org_sig_roles')
+          .upsert(update, { onConflict: 'role_type' });
+
+        if (sigError) throw sigError;
       }
 
-      toast({
-        title: "Success",
-        description: "Organisation profile updated successfully",
-      });
+      toast.success('Organisation profile updated successfully');
       setIsEditing(false);
-    } catch (err: any) {
-      console.error('Error saving organisation profile:', err);
-      toast({
-        title: "Error",
-        description: "Failed to save organisation profile",
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error('Error saving organisation data:', error);
+      toast.error('Failed to save organisation data');
     } finally {
       setSaving(false);
     }
   };
 
+  const fetchUserEmailAndRole = async (userId: string) => {
+    try {
+      // Get email using the database function
+      const { data: emailData, error: emailError } = await supabase
+        .rpc('get_user_email_by_id', { user_id: userId });
+      
+      if (emailError) {
+        console.error('Error fetching user email:', emailError);
+        return { email: '', title: '' };
+      }
+      
+      // Get primary role from user_profile_roles + roles
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_profile_roles')
+        .select(`
+          roles(name)
+        `)
+        .eq('user_id', userId)
+        .eq('is_primary', true)
+        .maybeSingle();
+      
+      if (roleError) {
+        console.error('Error fetching user role:', roleError);
+        return { email: emailData || '', title: '' };
+      }
+      
+      return {
+        email: emailData || '',
+        title: roleData?.roles?.name || ''
+      };
+      
+    } catch (error) {
+      console.error('Error in fetchUserEmailAndRole:', error);
+      return { email: '', title: '' };
+    }
+  };
+
+  const handleProfileSelect = async (role: string, profile: any) => {
+    if (!profile) {
+      // Clear the selection
+      switch (role) {
+        case 'cem':
+          setSignatoryData(prev => ({ 
+            ...prev, 
+            name_signatory_cem: '', 
+            title_signatory_cem: '',
+            email_signatory_cem: '' 
+          }));
+          break;
+        case 'hib':
+          setSignatoryData(prev => ({ 
+            ...prev, 
+            name_signatory_hib: '', 
+            title_signatory_hib: '',
+            email_signatory_hib: '' 
+          }));
+          break;
+        case 'dpe':
+          setSignatoryData(prev => ({ 
+            ...prev, 
+            name_signatory_dpe: '', 
+            title_signatory_dpe: '',
+            email_signatory_dpe: '' 
+          }));
+          break;
+        case 'dpo':
+          setSignatoryData(prev => ({ 
+            ...prev, 
+            dpo_name: '', 
+            dpo_email: '' 
+          }));
+          break;
+        case 'iso':
+          setSignatoryData(prev => ({ 
+            ...prev, 
+            iso_name: '', 
+            iso_email: '' 
+          }));
+          break;
+        case 'head_it':
+          setSignatoryData(prev => ({ 
+            ...prev, 
+            head_it_name: '', 
+            head_it_email: '' 
+          }));
+          break;
+        case 'it_manager':
+          setSignatoryData(prev => ({ 
+            ...prev, 
+            it_manager_name: '', 
+            it_manager_email: '' 
+          }));
+          break;
+      }
+      return;
+    }
+
+    // Get user's email and primary role
+    const { email, title } = await fetchUserEmailAndRole(profile.id);
+    
+    switch (role) {
+      case 'cem':
+        setSignatoryData(prev => ({ 
+          ...prev, 
+          name_signatory_cem: profile.full_name, 
+          title_signatory_cem: title,
+          email_signatory_cem: email 
+        }));
+        break;
+      case 'hib':
+        setSignatoryData(prev => ({ 
+          ...prev, 
+          name_signatory_hib: profile.full_name, 
+          title_signatory_hib: title,
+          email_signatory_hib: email 
+        }));
+        break;
+      case 'dpe':
+        setSignatoryData(prev => ({ 
+          ...prev, 
+          name_signatory_dpe: profile.full_name, 
+          title_signatory_dpe: title,
+          email_signatory_dpe: email 
+        }));
+        break;
+      case 'dpo':
+        setSignatoryData(prev => ({ 
+          ...prev, 
+          dpo_name: profile.full_name, 
+          dpo_email: email 
+        }));
+        break;
+      case 'iso':
+        setSignatoryData(prev => ({ 
+          ...prev, 
+          iso_name: profile.full_name, 
+          iso_email: email 
+        }));
+        break;
+      case 'head_it':
+        setSignatoryData(prev => ({ 
+          ...prev, 
+          head_it_name: profile.full_name, 
+          head_it_email: email 
+        }));
+        break;
+      case 'it_manager':
+        setSignatoryData(prev => ({ 
+          ...prev, 
+          it_manager_name: profile.full_name, 
+          it_manager_email: email 
+        }));
+        break;
+    }
+  };
+
   const handleCancel = () => {
     setIsEditing(false);
-    fetchOrganisationProfile(); // Reset to original data
+    fetchOrganisationData(); // Reset to original data
   };
-
-  const updateField = (field: keyof OrganisationData, value: string) => {
-    setOrgData(prev => ({ ...prev, [field]: value }));
-  };
-
-  useEffect(() => {
-    fetchOrganisationProfile();
-  }, [supabaseClient]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Organisation Profile</h2>
+          <p className="text-muted-foreground">Manage organisation details and signatory information</p>
+        </div>
+        {!isEditing ? (
+          <Button onClick={() => setIsEditing(true)} variant="outline" size="icon">
+            <Edit className="h-4 w-4" />
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={saving} size="icon">
+              <Save className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleCancel} variant="outline" disabled={saving} size="icon">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* General Organisation Information */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Organisation Profile
-              </CardTitle>
-              <CardDescription>
-                Manage your organisation's public information and settings
-              </CardDescription>
+          <CardTitle>General Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="org-name">Organisation Name</Label>
+              <Input
+                id="org-name"
+                value={organisationData.organisation_name || ''}
+                onChange={(e) => setOrganisationData(prev => ({ ...prev, organisation_name: e.target.value }))}
+                disabled={!isEditing}
+              />
             </div>
-            {hasPermission('canManageProfile') && (
-              <div className="flex gap-2">
-                {isEditing ? (
-                  <>
-                    <Button variant="outline" onClick={handleCancel} disabled={saving}>
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
-                    <Button onClick={saveOrganisationProfile} disabled={saving}>
-                      <Save className="h-4 w-4 mr-2" />
-                      {saving ? 'Saving...' : 'Save'}
-                    </Button>
-                  </>
-                ) : (
-                  <Button onClick={() => setIsEditing(true)}>
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="org-name-short">Organisation Name (Short)</Label>
+              <Input
+                id="org-name-short"
+                value={organisationData.organisation_name_short || ''}
+                onChange={(e) => setOrganisationData(prev => ({ ...prev, organisation_name_short: e.target.value }))}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="acra-uen">ACRA Number/Unique Entity Number (UEN)</Label>
+              <Input
+                id="acra-uen"
+                value={organisationData.acra_uen_number || ''}
+                onChange={(e) => setOrganisationData(prev => ({ ...prev, acra_uen_number: e.target.value }))}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="charity-reg">Charity Registration Number</Label>
+              <Input
+                id="charity-reg"
+                value={organisationData.charity_registration_number || ''}
+                onChange={(e) => setOrganisationData(prev => ({ ...prev, charity_registration_number: e.target.value }))}
+                disabled={!isEditing}
+              />
+            </div>
           </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="address">Address</Label>
+            <Textarea
+              id="address"
+              value={organisationData.address || ''}
+              onChange={(e) => setOrganisationData(prev => ({ ...prev, address: e.target.value }))}
+              disabled={!isEditing}
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="telephone">Telephone</Label>
+              <Input
+                id="telephone"
+                value={organisationData.telephone || ''}
+                onChange={(e) => setOrganisationData(prev => ({ ...prev, telephone: e.target.value }))}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="annual-turnover">Annual Turnover</Label>
+              <Input
+                id="annual-turnover"
+                value={organisationData.annual_turnover || ''}
+                onChange={(e) => setOrganisationData(prev => ({ ...prev, annual_turnover: e.target.value }))}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="num-employees">Number of Employees</Label>
+              <Input
+                id="num-employees"
+                type="number"
+                value={organisationData.number_of_employees || ''}
+                onChange={(e) => setOrganisationData(prev => ({ ...prev, number_of_employees: parseInt(e.target.value) || 0 }))}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="num-executives">Number of Executives</Label>
+              <Input
+                id="num-executives"
+                type="number"
+                value={organisationData.number_of_executives || ''}
+                onChange={(e) => setOrganisationData(prev => ({ ...prev, number_of_executives: parseInt(e.target.value) || 0 }))}
+                disabled={!isEditing}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cert-body">Appointed Certification Body</Label>
+            <Input
+              id="cert-body"
+              value={organisationData.appointed_certification_body || ''}
+              onChange={(e) => setOrganisationData(prev => ({ ...prev, appointed_certification_body: e.target.value }))}
+              disabled={!isEditing}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Signatory Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Signatory Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Logo and Basic Info */}
-          <div className="flex items-start space-x-6">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={orgData.logo_url} alt={orgData.name} />
-              <AvatarFallback className="text-lg">
-                {orgData.name.split(' ').map(n => n[0]).join('').toUpperCase() || 'ORG'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Organisation Name</Label>
-                  {isEditing ? (
-                    <Input
-                      id="name"
-                      value={orgData.name}
-                      onChange={(e) => updateField('name', e.target.value)}
-                      placeholder="Enter organisation name"
-                    />
-                  ) : (
-                    <p className="text-lg font-semibold">{orgData.name || 'Not set'}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="logo_url">Logo URL</Label>
-                  {isEditing ? (
-                    <Input
-                      id="logo_url"
-                      value={orgData.logo_url}
-                      onChange={(e) => updateField('logo_url', e.target.value)}
-                      placeholder="Enter logo URL"
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {orgData.logo_url || 'No logo set'}
-                    </p>
-                  )}
-                </div>
+          {/* CEM Declaration Signatory */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">CEM Declaration</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cem-name">Name of Signatory to CEM Declaration</Label>
+                <SearchableProfileField
+                  value={signatoryData.name_signatory_cem}
+                  onSelect={(profile) => handleProfileSelect('cem', profile)}
+                  placeholder="Select CEM signatory..."
+                  disabled={!isEditing}
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                {isEditing ? (
-                  <Textarea
-                    id="description"
-                    value={orgData.description}
-                    onChange={(e) => updateField('description', e.target.value)}
-                    placeholder="Enter organisation description"
-                    rows={3}
-                  />
-                ) : (
-                  <p className="text-muted-foreground">
-                    {orgData.description || 'No description available'}
-                  </p>
-                )}
+                <Label htmlFor="cem-title">Title of Signatory to CEM Declaration</Label>
+                <Input
+                  id="cem-title"
+                  value={signatoryData.title_signatory_cem || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, title_signatory_cem: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cem-email">Email of Signatory to CEM Declaration</Label>
+                <Input
+                  id="cem-email"
+                  type="email"
+                  value={signatoryData.email_signatory_cem || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, email_signatory_cem: e.target.value }))}
+                  disabled={!isEditing}
+                />
               </div>
             </div>
           </div>
 
-          {/* Contact Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Contact Information</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email Address
-                </Label>
-                {isEditing ? (
-                  <Input
-                    id="email"
-                    type="email"
-                    value={orgData.email}
-                    onChange={(e) => updateField('email', e.target.value)}
-                    placeholder="Enter email address"
-                  />
-                ) : (
-                  <p className="text-sm">{orgData.email || 'Not set'}</p>
-                )}
-              </div>
+          <Separator />
 
+          {/* HIB Pledge Signatory */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">HIB Pledge</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Phone Number
-                </Label>
-                {isEditing ? (
-                  <Input
-                    id="phone"
-                    value={orgData.phone}
-                    onChange={(e) => updateField('phone', e.target.value)}
-                    placeholder="Enter phone number"
-                  />
-                ) : (
-                  <p className="text-sm">{orgData.phone || 'Not set'}</p>
-                )}
+                <Label htmlFor="hib-name">Name of Signatory to HIB Pledge</Label>
+                <SearchableProfileField
+                  value={signatoryData.name_signatory_hib}
+                  onSelect={(profile) => handleProfileSelect('hib', profile)}
+                  placeholder="Select HIB signatory..."
+                  disabled={!isEditing}
+                />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="website" className="flex items-center gap-2">
-                  <Globe className="h-4 w-4" />
-                  Website
-                </Label>
-                {isEditing ? (
-                  <Input
-                    id="website"
-                    value={orgData.website}
-                    onChange={(e) => updateField('website', e.target.value)}
-                    placeholder="Enter website URL"
-                  />
-                ) : (
-                  <p className="text-sm">
-                    {orgData.website ? (
-                      <a 
-                        href={orgData.website} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        {orgData.website}
-                      </a>
-                    ) : (
-                      'Not set'
-                    )}
-                  </p>
-                )}
+                <Label htmlFor="hib-title">Title of Signatory to HIB Pledge</Label>
+                <Input
+                  id="hib-title"
+                  value={signatoryData.title_signatory_hib || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, title_signatory_hib: e.target.value }))}
+                  disabled={!isEditing}
+                />
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Location</h3>
-              
               <div className="space-y-2">
-                <Label htmlFor="address" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Address
-                </Label>
-                {isEditing ? (
-                  <Textarea
-                    id="address"
-                    value={orgData.address}
-                    onChange={(e) => updateField('address', e.target.value)}
-                    placeholder="Enter full address"
-                    rows={3}
-                  />
-                ) : (
-                  <p className="text-sm whitespace-pre-line">
-                    {orgData.address || 'Not set'}
-                  </p>
-                )}
+                <Label htmlFor="hib-email">Email of Signatory to HIB Pledge</Label>
+                <Input
+                  id="hib-email"
+                  type="email"
+                  value={signatoryData.email_signatory_hib || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, email_signatory_hib: e.target.value }))}
+                  disabled={!isEditing}
+                />
               </div>
             </div>
           </div>
 
-          {/* Additional Information */}
-          {orgData.created_at && (
-            <div className="pt-4 border-t border-muted">
-              <p className="text-xs text-muted-foreground">
-                Profile created on {new Date(orgData.created_at).toLocaleDateString()}
-                {orgData.updated_at && orgData.updated_at !== orgData.created_at && (
-                  <> • Last updated on {new Date(orgData.updated_at).toLocaleDateString()}</>
-                )}
-              </p>
+          <Separator />
+
+          {/* DPE Pledge Signatory */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">DPE Pledge</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dpe-name">Name of Signatory to DPE Pledge</Label>
+                <SearchableProfileField
+                  value={signatoryData.name_signatory_dpe}
+                  onSelect={(profile) => handleProfileSelect('dpe', profile)}
+                  placeholder="Select DPE signatory..."
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dpe-title">Title of Signatory to DPE Pledge</Label>
+                <Input
+                  id="dpe-title"
+                  value={signatoryData.title_signatory_dpe || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, title_signatory_dpe: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dpe-email">Email of Signatory to DPE Pledge</Label>
+                <Input
+                  id="dpe-email"
+                  type="email"
+                  value={signatoryData.email_signatory_dpe || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, email_signatory_dpe: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
             </div>
-          )}
+          </div>
+
+          <Separator />
+
+          {/* Other Personnel */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Key Personnel</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dpo-name">DPO Name</Label>
+                <SearchableProfileField
+                  value={signatoryData.dpo_name}
+                  onSelect={(profile) => handleProfileSelect('dpo', profile)}
+                  placeholder="Select DPO..."
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dpo-email">DPO Email</Label>
+                <Input
+                  id="dpo-email"
+                  type="email"
+                  value={signatoryData.dpo_email || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, dpo_email: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="iso-name">ISO Name</Label>
+                <SearchableProfileField
+                  value={signatoryData.iso_name}
+                  onSelect={(profile) => handleProfileSelect('iso', profile)}
+                  placeholder="Select ISO..."
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="iso-email">ISO Email</Label>
+                <Input
+                  id="iso-email"
+                  type="email"
+                  value={signatoryData.iso_email || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, iso_email: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="head-it-name">Head of IT Name</Label>
+                <SearchableProfileField
+                  value={signatoryData.head_it_name}
+                  onSelect={(profile) => handleProfileSelect('head_it', profile)}
+                  placeholder="Select Head of IT..."
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="head-it-email">Head of IT Email</Label>
+                <Input
+                  id="head-it-email"
+                  type="email"
+                  value={signatoryData.head_it_email || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, head_it_email: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="it-manager-name">IT Manager Name</Label>
+                <SearchableProfileField
+                  value={signatoryData.it_manager_name}
+                  onSelect={(profile) => handleProfileSelect('it_manager', profile)}
+                  placeholder="Select IT Manager..."
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="it-manager-email">IT Manager Email</Label>
+                <Input
+                  id="it-manager-email"
+                  type="email"
+                  value={signatoryData.it_manager_email || ''}
+                  onChange={(e) => setSignatoryData(prev => ({ ...prev, it_manager_email: e.target.value }))}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 };
+
+export default OrganisationProfile;
