@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserProfiles } from '@/hooks/useUserProfiles';
@@ -8,10 +7,12 @@ import { handleSaveUser, handleCreateUser, handleDeleteUser } from '@/utils/user
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { LayoutGrid, List } from 'lucide-react';
+import { useOrganisationContext } from '../../context/OrganisationContext';
 import UserList from './UserList';
 import UserTable from './UserTable';
 import CreateUserDialog from './CreateUserDialog';
 import EditUserDialog from './EditUserDialog';
+
 
 const UserManagement: React.FC = () => {
   const { hasPermission, onUserAction } = useOrganisationContext();
@@ -112,7 +113,7 @@ const UserManagement: React.FC = () => {
       <EditUserDialog
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        editingUser={editingUser}
+        onUserChange={(user) => setEditingUser(user)}
         onUserChange={setEditingUser}
         onSubmit={onSaveUser}
       />

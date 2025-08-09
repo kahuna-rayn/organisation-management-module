@@ -3,12 +3,13 @@ export { OrganisationPanel } from './components/OrganisationPanel';
 export { OrganisationProvider, useOrganisationContext } from './context/OrganisationContext';
 
 // Component exports
-export { UserManagement } from './components/admin/UserManagement';
-export { UserList } from './components/admin/UserList';
-export { UserCard } from './components/admin/UserCard';
-export { UserTable } from './components/admin/UserTable';
-export { CreateUserDialog } from './components/admin/CreateUserDialog';
-export { EditUserDialog } from './components/admin/EditUserDialog';
+export { default as UserManagement } from './components/admin/UserManagement';
+export { default as UserList } from './components/admin/UserList';
+export { default as UserCard } from './components/admin/UserCard';
+export { default as UserTable } from './components/admin/UserTable';
+export { default as CreateUserDialog } from './components/admin/CreateUserDialog';
+export { default as EditUserDialog } from './components/admin/EditUserDialog';
+
 
 // Hook exports
 export { useUserManagement } from './hooks/useUserManagement';
