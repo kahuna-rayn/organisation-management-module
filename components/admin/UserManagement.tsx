@@ -110,13 +110,14 @@ const UserManagement: React.FC = () => {
         />
       )}
 
-      <EditUserDialog
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onUserChange={(user) => setEditingUser(user)}
-        onUserChange={setEditingUser}
-        onSubmit={onSaveUser}
-      />
+<EditUserDialog
+  isOpen={isEditDialogOpen}
+  onOpenChange={setIsEditDialogOpen}
+  editingUser={editingUser}
+  onUserChange={setEditingUser}
+  onSubmit={onSaveUser}
+/>
+
     </div>
   );
 };

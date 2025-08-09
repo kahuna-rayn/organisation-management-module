@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Users, UserCheck, Building2, MapPin, Settings, Award, User } from 'lucide-react';
 import { useOrganisationContext } from '../context/OrganisationContext';
-import { UserManagement } from './admin/UserManagement';
+import UserManagement from './admin/UserManagement';
 import { RoleManagement } from './knowledge/RoleManagement';
 import { DepartmentManagement } from './knowledge/DepartmentManagement';
 import { LocationManagement } from './knowledge/LocationManagement';
