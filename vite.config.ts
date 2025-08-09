@@ -21,6 +21,7 @@ export default defineConfig({
         '@supabase/supabase-js',
         '@tanstack/react-query',
         /^@\/components\/ui\/.*/,
+        /^@\/hooks\/.*/,
       ],
       output: {
         globals: {
