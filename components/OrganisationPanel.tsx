@@ -9,7 +9,7 @@ import { RoleManagement } from './knowledge/RoleManagement';
 import { DepartmentManagement } from './knowledge/DepartmentManagement';
 import { LocationManagement } from './knowledge/LocationManagement';
 import { OrganisationCertificates } from './OrganisationCertificates';
-import { OrganisationProfile } from './OrganisationProfile';
+import OrganisationProfile from './OrganisationProfile';
 
 interface OrganisationPanelProps {
   title?: string;
