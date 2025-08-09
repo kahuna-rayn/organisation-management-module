@@ -1,134 +1,182 @@
-import React from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Edit, Trash2, Mail, Phone, MapPin, Building } from 'lucide-react';
-import type { UserProfile } from '../../types';
+import { Edit, Trash2, Phone, MapPin, IdCard, Mail, Eye, Settings } from 'lucide-react';
+import EditableField from '@/components/profile/EditableField';
+import { toast } from '@/components/ui/use-toast';
+import { DepartmentRolePairsDisplay } from '@/components/admin/DepartmentRolePairsDisplay';
+import type { UserProfile } from '@/hooks/useUserProfiles';
 
 interface UserCardProps {
   user: UserProfile;
-  onEdit?: (user: UserProfile) => void;
-  onDelete?: (userId: string) => void;
+  onEdit: (user: UserProfile) => void;
+  onDelete: (userId: string) => void;
 }
 
-export const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete }) => {
-  const getInitials = (name?: string) => {
-    if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  };
+const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete }) => {
+  const navigate = useNavigate();
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const getStatusColor = (status?: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active': return 'default';
-      case 'inactive': return 'secondary';
-      case 'pending': return 'outline';
-      default: return 'secondary';
+  const initials = user.full_name 
+    ? user.full_name.split(' ').map(n => n.charAt(0)).join('').slice(0, 2)
+    : user.username?.slice(0, 2) || 'U';
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Active': return 'bg-green-500';
+      case 'Inactive': return 'bg-red-500';
+      case 'OnLeave': return 'bg-yellow-500';
+      default: return 'bg-gray-500';
     }
   };
 
+  // Fetch physical location access for this user
+  const { data: locationAccess = [] } = useQuery({
+    queryKey: ['user-location-access', user.email],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('physical_location_access')
+        .select('access_purpose, status')
+        .eq('user_id', user.id)
+        .eq('status', 'Active');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const handleFieldSave = async (fieldKey: string, value: string) => {
+    setSaving(true);
+    try {
+      if (fieldKey === 'email') {
+        toast({
+          title: "Email Update Limitation",
+          description: "Email addresses are managed by authentication and cannot be updated directly from this interface.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const updatedUser = { ...user, [fieldKey]: value };
+      onEdit(updatedUser);
+      
+      toast({
+        title: "Field updated",
+        description: `${fieldKey} has been updated successfully.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+      setEditingField(null);
+    }
+  };
+
+  const handleViewDetails = () => {
+    navigate(`/admin/users/${user.id}`);
+  };
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={user.avatar_url} alt={user.full_name} />
-              <AvatarFallback>{getInitials(user.full_name)}</AvatarFallback>
+    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleViewDetails}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={user.avatar_url} />
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
-            <div className="space-y-1">
-              <h3 className="font-semibold text-sm">{user.full_name || 'Unknown User'}</h3>
-              <p className="text-xs text-muted-foreground">@{user.username || 'no-username'}</p>
-              {user.status && (
-                <Badge variant={getStatusColor(user.status)} className="text-xs">
-                  {user.status}
-                </Badge>
-              )}
+            <div>
+              <h3 className="font-medium">{user.full_name || 'No name'}</h3>
+              <div className="text-sm text-muted-foreground">
+                <DepartmentRolePairsDisplay userId={user.id} />
+              </div>
             </div>
           </div>
-          <div className="flex space-x-1">
-            {onEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onEdit(user)}
-                className="h-8 w-8 p-0"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(user.id)}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+          <Badge className={`${getStatusColor(user.status || 'Active')} text-white`}>
+            {user.status || 'Active'}
+          </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="pt-0 space-y-3">
-        {user.role && (
-          <div className="flex items-center space-x-2 text-sm">
-            <Badge variant="outline">{user.role}</Badge>
+
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <Mail className="h-3 w-3 text-muted-foreground" />
+            <EditableField
+              value={user.email || 'No email'}
+              fieldKey="email"
+              placeholder="Enter email"
+              className="flex-1"
+              inputClassName="text-sm"
+              onSave={handleFieldSave}
+              isEditing={editingField === 'email'}
+              onEdit={setEditingField}
+              onCancel={() => setEditingField(null)}
+              saving={saving}
+            />
           </div>
-        )}
-        
-        <div className="space-y-2 text-xs text-muted-foreground">
-          {user.email && (
-            <div className="flex items-center space-x-2">
-              <Mail className="h-3 w-3" />
-              <span className="truncate">{user.email}</span>
-            </div>
-          )}
-          {user.phone && (
-            <div className="flex items-center space-x-2">
-              <Phone className="h-3 w-3" />
-              <span>{user.phone}</span>
-            </div>
-          )}
-          {user.department && (
-            <div className="flex items-center space-x-2">
-              <Building className="h-3 w-3" />
-              <span>{user.department}</span>
-            </div>
-          )}
-          {user.location && (
-            <div className="flex items-center space-x-2">
-              <MapPin className="h-3 w-3" />
-              <span>{user.location}</span>
+          <div className="flex items-center gap-2">
+            <IdCard className="h-3 w-3 text-muted-foreground" />
+            <span className="text-muted-foreground">ID: {user.employee_id || 'Not set'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Phone className="h-3 w-3 text-muted-foreground" />
+            <span className="text-muted-foreground">{user.phone || 'No phone'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-3 w-3 text-muted-foreground" />
+            <span className="text-muted-foreground">{user.location || 'No location'}</span>
+          </div>
+          
+          {/* Physical Location Access Section */}
+          {locationAccess.length > 0 && (
+            <div className="mt-3 pt-3 border-t">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Physical Access:</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {locationAccess.slice(0, 3).map((access, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {access.access_purpose || 'Unknown Purpose'}
+                  </Badge>
+                ))}
+                {locationAccess.length > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{locationAccess.length - 3} more
+                  </Badge>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {(user.total_learning_hours || user.courses_completed || user.compliance_score) && (
-          <div className="pt-2 border-t border-muted">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {user.total_learning_hours !== undefined && (
-                <div>
-                  <div className="text-xs font-medium">{user.total_learning_hours}h</div>
-                  <div className="text-xs text-muted-foreground">Learning</div>
-                </div>
-              )}
-              {user.courses_completed !== undefined && (
-                <div>
-                  <div className="text-xs font-medium">{user.courses_completed}</div>
-                  <div className="text-xs text-muted-foreground">Courses</div>
-                </div>
-              )}
-              {user.compliance_score !== undefined && (
-                <div>
-                  <div className="text-xs font-medium">{user.compliance_score}%</div>
-                  <div className="text-xs text-muted-foreground">Compliance</div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <div className="flex gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
+          <Button size="sm" variant="outline" onClick={handleViewDetails}>
+            <Eye className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate(`/admin/users/${user.id}`)}>
+            <Settings className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onEdit(user)}>
+            <Edit className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onDelete(user.id)}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
 };
+
+export default UserCard;
