@@ -1,110 +1,142 @@
+
 import React from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Edit, Trash2 } from 'lucide-react';
-import type { UserProfile } from '../../types';
+import { useNavigate } from 'react-router-dom';
+import { EditableTable } from '@/components/ui/editable-table';
+import type { UserProfile } from '@/hooks/useUserProfiles';
 
 interface UserTableProps {
   profiles: UserProfile[];
-  onEdit?: (user: UserProfile) => void;
-  onDelete?: (userId: string) => void;
-  onUpdate?: (id: string, updates: any) => Promise<{ success: boolean; error?: string }>;
+  onEdit: (user: UserProfile) => void;
+  onDelete: (userId: string) => void;
+  onUpdate: (id: string, updates: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
+  onCreate?: (data: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
 }
 
-export const UserTable: React.FC<UserTableProps> = ({ profiles, onEdit, onDelete, onUpdate }) => {
-  const getInitials = (name?: string) => {
-    if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+const UserTable: React.FC<UserTableProps> = ({ 
+  profiles, 
+  onUpdate,
+  onDelete,
+  onCreate 
+}) => {
+  const navigate = useNavigate();
+
+  const columns = [
+    { 
+      key: 'full_name', 
+      header: 'Full Name', 
+      type: 'text' as const, 
+      editable: true, 
+      required: true,
+      sortable: true,
+      width: '180px'
+    },
+    { 
+      key: 'username', 
+      header: 'Username', 
+      type: 'text' as const, 
+      editable: true,
+      sortable: true,
+      width: '140px'
+    },
+    { 
+      key: 'department_role_pairs', 
+      header: 'Department → Role', 
+      type: 'custom' as const, 
+      editable: false,
+      sortable: false,
+      customComponent: 'DepartmentRolePairsDisplay',
+      width: '280px'
+    },
+    { 
+      key: 'employee_id', 
+      header: 'Employee ID', 
+      type: 'text' as const, 
+      editable: true,
+      sortable: true,
+      width: '120px'
+    },
+    { 
+      key: 'phone', 
+      header: 'Phone', 
+      type: 'text' as const, 
+      editable: true,
+      sortable: false,
+      width: '130px'
+    },
+    { 
+      key: 'location', 
+      header: 'Location', 
+      type: 'text' as const, 
+      editable: true,
+      sortable: true,
+      width: '120px'
+    },
+    { 
+      key: 'status', 
+      header: 'Status', 
+      type: 'badge' as const, 
+      editable: true,
+      sortable: true,
+      options: ['Active', 'Inactive', 'OnLeave'],
+      width: '100px'
+    },
+    { 
+      key: 'access_level', 
+      header: 'Access Level', 
+      type: 'select' as const, 
+      editable: true,
+      sortable: true,
+      options: ['User', 'Manager', 'Admin'],
+      width: '130px'
+    },
+    { 
+      key: 'language', 
+      header: 'Language', 
+      type: 'select' as const, 
+      editable: true,
+      sortable: true,
+      options: [
+        'Bahasa Indonesia',
+        'Bahasa Malaysia', 
+        'Burmese',
+        'Cambodian',
+        'English',
+        'Filipino',
+        'Lao',
+        'Thai',
+        'Vietnamese'
+      ],
+      width: '140px'
+    }
+  ];
+
+  const handleDelete = async (id: string) => {
+    return new Promise<{ success: boolean; error?: string }>((resolve) => {
+      onDelete(id);
+      resolve({ success: true });
+    });
   };
 
-  const getStatusColor = (status?: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active': return 'default';
-      case 'inactive': return 'secondary';
-      case 'pending': return 'outline';
-      default: return 'secondary';
-    }
+  const handleViewUser = (user: UserProfile) => {
+    navigate(`/admin/users/${user.id}`);
   };
 
   return (
-    <div className="border rounded-lg">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>User</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Department</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Learning Hours</TableHead>
-            <TableHead>Compliance</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {profiles.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar_url} alt={user.full_name} />
-                    <AvatarFallback className="text-xs">{getInitials(user.full_name)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-medium">{user.full_name || 'Unknown User'}</div>
-                    <div className="text-sm text-muted-foreground">{user.email}</div>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                {user.role && <Badge variant="outline">{user.role}</Badge>}
-              </TableCell>
-              <TableCell>{user.department || '-'}</TableCell>
-              <TableCell>{user.location || '-'}</TableCell>
-              <TableCell>
-                {user.status && (
-                  <Badge variant={getStatusColor(user.status)}>
-                    {user.status}
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell>{user.total_learning_hours || 0}h</TableCell>
-              <TableCell>{user.compliance_score || 0}%</TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end space-x-1">
-                  {onEdit && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(user)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete(user.id)}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {profiles.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          No users found
-        </div>
-      )}
+    <div className="w-full">
+      <EditableTable
+        data={profiles}
+        columns={columns}
+        onUpdate={onUpdate}
+        onDelete={handleDelete}
+        onCreate={onCreate}
+        onViewUser={handleViewUser}
+        allowAdd={true}
+        allowDelete={true}
+        allowView={true}
+        className="w-full"
+      />
     </div>
   );
 };
+
+export default UserTable;
