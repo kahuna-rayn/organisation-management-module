@@ -19,7 +19,8 @@ export default defineConfig({
         'react-dom',
         'react/jsx-runtime',
         '@supabase/supabase-js',
-        '@tanstack/react-query'
+        '@tanstack/react-query',
+        /^@\/components\/ui\/.*/,
       ],
       output: {
         globals: {
