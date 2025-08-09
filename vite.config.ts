@@ -8,7 +8,7 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
+      entry: resolve(__dirname, 'index.ts'),
       name: 'OrganisationManagement',
       formats: ['es', 'umd'],
       fileName: (format) => `index.${format === 'es' ? 'esm' : format}.js`
