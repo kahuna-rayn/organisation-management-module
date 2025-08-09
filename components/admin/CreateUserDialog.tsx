@@ -16,7 +16,7 @@ interface CreateUserDialogProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
-export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
+const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
   isOpen,
   onOpenChange,
   newUser,
@@ -193,4 +193,5 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
+}; 
+export default CreateUserDialog;

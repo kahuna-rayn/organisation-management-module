@@ -15,7 +15,7 @@ interface EditUserDialogProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
-export const EditUserDialog: React.FC<EditUserDialogProps> = ({
+const EditUserDialog: React.FC<EditUserDialogProps> = ({
   isOpen,
   onOpenChange,
   editingUser,
@@ -180,3 +180,4 @@ export const EditUserDialog: React.FC<EditUserDialogProps> = ({
     </Dialog>
   );
 };
+export default EditUserDialog;

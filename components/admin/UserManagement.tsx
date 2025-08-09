@@ -12,7 +12,7 @@ import { UserTable } from './UserTable';
 import { CreateUserDialog } from './CreateUserDialog';
 import { EditUserDialog } from './EditUserDialog';
 
-export const UserManagement: React.FC = () => {
+const UserManagement: React.FC = () => {
   const { hasPermission, onUserAction } = useOrganisationContext();
   const { profiles, loading, updateProfile } = useUserProfiles();
   const [viewMode, setViewMode] = useViewPreference('userManagement', 'cards');
@@ -130,3 +130,4 @@ export const UserManagement: React.FC = () => {
     </div>
   );
 };
+export default UserManagement;
