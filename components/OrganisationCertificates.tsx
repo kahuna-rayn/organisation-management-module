@@ -83,8 +83,9 @@ export const OrganisationCertificates: React.FC = () => {
 
       // Fetch certificates
       const { data: certsData, error: certsError } = await supabaseClient
-        .from('organisation_certificates')
+        .from('certificates')
         .select('*')
+        .eq('org_cert', true)
         .order('created_at', { ascending: false });
 
       if (certsError) throw certsError;
