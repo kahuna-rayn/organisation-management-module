@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useQuery } from '@tanstack/react-query';
+import { useOrganisationContext } from '../../context/OrganisationContext';
 import type { UserProfile } from '../../types';
 
 interface EditUserDialogProps {
@@ -22,10 +24,48 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
   onUserChange,
   onSubmit
 }) => {
+  const { supabaseClient } = useOrganisationContext();
+
+  // Fetch locations for dropdown
+  const { data: locations } = useQuery({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const { data } = await supabaseClient
+        .from('locations')
+        .select('id, name')
+        .eq('status', 'Active')
+        .order('name');
+      return data || [];
+    },
+  });
+
   if (!editingUser) return null;
 
   const updateField = (field: keyof UserProfile, value: string) => {
     onUserChange({ ...editingUser, [field]: value });
+  };
+
+  const handleLocationChange = (locationId: string) => {
+    const selectedLocation = locations?.find(loc => loc.id === locationId);
+    if (selectedLocation) {
+      onUserChange({ 
+        ...editingUser, 
+        location_id: locationId,
+        location: selectedLocation.name 
+      });
+    }
+  };
+
+  // Find the correct location_id if it's missing but location name exists
+  const getLocationId = () => {
+    if (editingUser.location_id) {
+      return editingUser.location_id;
+    }
+    if (editingUser.location && locations) {
+      const foundLocation = locations.find(loc => loc.name === editingUser.location);
+      return foundLocation?.id || '';
+    }
+    return '';
   };
 
   return (
@@ -114,12 +154,18 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit_location">Location</Label>
-              <Input
-                id="edit_location"
-                value={editingUser.location || ''}
-                onChange={(e) => updateField('location', e.target.value)}
-                placeholder="Enter location"
-              />
+              <Select value={getLocationId()} onValueChange={handleLocationChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations?.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

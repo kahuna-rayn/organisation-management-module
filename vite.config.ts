@@ -20,6 +20,7 @@ export default defineConfig({
         'react/jsx-runtime',
         '@supabase/supabase-js',
         '@tanstack/react-query',
+        'react-router-dom',
         /^@\/components\/ui\/.*/,
         /^@\/hooks\/.*/,
       ],
@@ -29,7 +30,8 @@ export default defineConfig({
           'react-dom': 'ReactDOM',
           'react/jsx-runtime': 'react/jsx-runtime',
           '@supabase/supabase-js': 'Supabase',
-          '@tanstack/react-query': 'ReactQuery'
+          '@tanstack/react-query': 'ReactQuery',
+          'react-router-dom': 'ReactRouterDOM'
         }
       }
     },

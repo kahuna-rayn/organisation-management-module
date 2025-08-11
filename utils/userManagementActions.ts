@@ -54,6 +54,7 @@ export const handleCreateUser = async (
         department: newUser.department,
         phone: newUser.phone,
         location: newUser.location,
+        location_id: newUser.location_id,
         status: newUser.status,
         access_level: newUser.access_level,
         bio: newUser.bio,

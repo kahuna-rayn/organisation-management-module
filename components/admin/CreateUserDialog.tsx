@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useOrganisationContext } from '../../context/OrganisationContext';
 import type { NewUser } from '../../types';
 
 interface CreateUserDialogProps {
@@ -23,8 +25,34 @@ const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
   onUserChange,
   onSubmit
 }) => {
+  const { supabaseClient } = useOrganisationContext();
+
+  // Fetch locations for dropdown
+  const { data: locations } = useQuery({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const { data } = await supabaseClient
+        .from('locations')
+        .select('id, name')
+        .eq('status', 'Active')
+        .order('name');
+      return data || [];
+    },
+  });
+
   const updateField = (field: keyof NewUser, value: string) => {
     onUserChange({ ...newUser, [field]: value });
+  };
+
+  const handleLocationChange = (locationId: string) => {
+    const selectedLocation = locations?.find(loc => loc.id === locationId);
+    if (selectedLocation) {
+      onUserChange({ 
+        ...newUser, 
+        location_id: locationId,
+        location: selectedLocation.name 
+      });
+    }
   };
 
   return (
@@ -163,12 +191,18 @@ const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={newUser.location}
-              onChange={(e) => updateField('location', e.target.value)}
-              placeholder="Enter location"
-            />
+            <Select value={newUser.location_id || ''} onValueChange={handleLocationChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations?.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

@@ -35,6 +35,7 @@ export interface UserProfile {
   department?: string;
   phone?: string;
   location?: string;
+  location_id?: string;
   status?: string;
   access_level?: string;
   bio?: string;
@@ -59,6 +60,7 @@ export interface NewUser {
   department: string;
   phone: string;
   location: string;
+  location_id?: string;
   status: string;
   access_level: string;
   bio: string;
