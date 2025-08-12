@@ -41,7 +41,14 @@ const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
   });
 
   const updateField = (field: keyof NewUser, value: string) => {
-    onUserChange({ ...newUser, [field]: value });
+    const updatedUser = { ...newUser, [field]: value };
+    
+    // Auto-populate username with email when email changes
+    if (field === 'email') {
+      updatedUser.username = value;
+    }
+    
+    onUserChange(updatedUser);
   };
 
   const handleLocationChange = (locationId: string) => {

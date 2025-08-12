@@ -1,3 +1,4 @@
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import type { UserProfile, NewUser } from '../types';
 
@@ -60,6 +61,31 @@ export const handleCreateUser = async (
         bio: newUser.bio,
         employee_id: newUser.employee_id,
       });
+
+            // Assign physical location access if location is selected
+      if (newUser.location_id) {
+        try {
+          const locationData = {
+            user_id: user.id,
+            location_id: newUser.location_id,
+            full_name: newUser.full_name,
+            access_purpose: 'General Access',
+            status: 'Active',
+            date_access_created: new Date().toISOString()
+          };
+
+          const { data: locationDataResult, error: locationError } = await supabase
+            .from('physical_location_access')
+            .insert(locationData)
+            .select();
+
+          if (locationError) {
+            console.error('❌ Error assigning physical location access:', locationError);
+          }
+        } catch (locationError) {
+          console.error('❌ Exception assigning physical location access:', locationError);
+        }
+      }
     }
 
     toast({
