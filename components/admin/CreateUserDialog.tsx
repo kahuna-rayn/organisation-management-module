@@ -55,6 +55,22 @@ const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
     }
   };
 
+  const handleNameChange = (field: 'first_name' | 'last_name', value: string) => {
+    const updatedUser = { ...newUser, [field]: value };
+    
+    // Auto-update full_name when first_name or last_name changes
+    const firstName = field === 'first_name' ? value : newUser.first_name || '';
+    const lastName = field === 'last_name' ? value : newUser.last_name || '';
+    updatedUser.full_name = `${firstName} ${lastName}`.trim();
+    
+    onUserChange(updatedUser);
+  };
+
+  const handleFullNameChange = (value: string) => {
+    // Allow manual override of full_name
+    onUserChange({ ...newUser, full_name: value });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
@@ -72,30 +88,41 @@ const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name</Label>
+              <Label htmlFor="first_name">First Name</Label>
               <Input
-                id="full_name"
-                value={newUser.full_name}
-                onChange={(e) => updateField('full_name', e.target.value)}
-                placeholder="Enter full name"
+                id="first_name"
+                value={newUser.first_name}
+                onChange={(e) => handleNameChange('first_name', e.target.value)}
+                placeholder="Enter first name"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="last_name">Last Name</Label>
               <Input
-                id="username"
-                value={newUser.username}
-                onChange={(e) => updateField('username', e.target.value)}
-                placeholder="Enter username"
+                id="last_name"
+                value={newUser.last_name}
+                onChange={(e) => handleNameChange('last_name', e.target.value)}
+                placeholder="Enter last name"
                 required
               />
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="full_name">Full Name (Auto-generated, editable)</Label>
+            <Input
+              id="full_name"
+              value={newUser.full_name}
+              onChange={(e) => handleFullNameChange(e.target.value)}
+              placeholder="Full name will be auto-generated from first and last name"
+              required
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
                 type="email"
@@ -114,27 +141,6 @@ const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
                 onChange={(e) => updateField('password', e.target.value)}
                 placeholder="Enter password"
                 required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Input
-                id="role"
-                value={newUser.role}
-                onChange={(e) => updateField('role', e.target.value)}
-                placeholder="Enter user role"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
-                value={newUser.department}
-                onChange={(e) => updateField('department', e.target.value)}
-                placeholder="Enter department"
               />
             </div>
           </div>

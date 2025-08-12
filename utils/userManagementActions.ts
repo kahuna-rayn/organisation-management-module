@@ -49,9 +49,9 @@ export const handleCreateUser = async (
     if (user?.id) {
       await updateProfile(user.id, {
         full_name: newUser.full_name,
+        first_name: newUser.first_name,
+        last_name: newUser.last_name,
         username: newUser.username,
-        role: newUser.role,
-        department: newUser.department,
         phone: newUser.phone,
         location: newUser.location,
         location_id: newUser.location_id,
@@ -60,13 +60,6 @@ export const handleCreateUser = async (
         bio: newUser.bio,
         employee_id: newUser.employee_id,
       });
-
-      // Handle department assignment if specified
-      if (newUser.department) {
-        // This would require additional logic to assign department/role combinations
-        // For now, we'll just log it
-        console.log('Department assignment needed for user:', user.id, 'department:', newUser.department);
-      }
     }
 
     toast({
